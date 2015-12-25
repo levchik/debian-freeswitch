@@ -1,0 +1,24 @@
+---
+- hosts: all
+  sudo: true
+  environment:
+    LC_ALL: en_US.utf8
+  tasks:
+    - name: Add FreeSWITCH apt key
+      apt_key: url="http://files.freeswitch.org/repo/deb/debian/freeswitch_archive_g0.pub"
+    - name: Add FreeSWITCH repo entry to apt
+      copy: content="deb http://files.freeswitch.org/repo/deb/freeswitch-1.6/ jessie main" dest=/etc/apt/sources.list.d/freeswitch.list
+    - name: Apt update and cache
+      apt: update_cache=yes
+    - name: Install required packages
+      apt: name={{ item }} state=latest
+      with_items:
+        - "freeswitch-all"
+        - "freeswitch-all-dbg"
+        - "gdb"
+    - name: Set local_ip_v4 variable
+      lineinfile: dest=/etc/freeswitch/vars.xml insertbefore='  <X-PRE-PROCESS cmd="set" data="domain=$${local_ip_v4}"/>' line='  <X-PRE-PROCESS cmd="set" data="local_ip_v4={{ ansible_eth1.ipv4.address }}"'/>
+    - name: Restart FreeSWITCH
+      service: name=freeswitch state=restarted
+    - name: Print host info
+      debug: msg="Private network IPv4 address: {{ ansible_eth1.ipv4.address }}"
